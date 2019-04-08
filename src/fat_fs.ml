@@ -81,7 +81,8 @@ module Make (B: Mirage_block_lwt.S) = struct
       else if Cstruct.len buf <= 512 then [ buf ]
       else Cstruct.sub buf 0 512 :: (split (Cstruct.shift buf 512))
     in
-    let page = alloc 4096 in
+    B.get_info device >>= fun {sector_size; _} ->
+    let page = alloc sector_size in
     let rec loop sector_size = function
       | []                     -> Lwt.return (Ok ())
       | (sector, buffer) :: xs ->
@@ -94,7 +95,6 @@ module Make (B: Mirage_block_lwt.S) = struct
           Cstruct.blit page (offset mod sector_size) buffer 0 512;
           loop sector_size xs
     in
-    B.get_info device >>= fun {sector_size; _} ->
     loop sector_size (List.combine xs (split buf)) >|*= fun () ->
     Ok buf
 
